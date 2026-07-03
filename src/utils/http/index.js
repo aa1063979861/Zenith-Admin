@@ -14,6 +14,7 @@ export function createAxios(options = {}) {
   const defaultOptions = {
     baseURL: import.meta.env.VITE_AXIOS_BASE_URL,
     timeout: 12000,
+    withCredentials: true,
   }
   const service = axios.create({
     ...defaultOptions,
@@ -24,7 +25,3 @@ export function createAxios(options = {}) {
 }
 
 export const request = createAxios()
-
-export const mockRequest = createAxios({
-  baseURL: '/mock-api',
-})

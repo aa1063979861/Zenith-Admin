@@ -46,7 +46,7 @@ function handleMenuSelect(key, item) {
       positiveText: '外链打开',
       negativeText: '在本站内嵌打开',
       confirm() {
-        window.open(item.originPath)
+        window.open(item.originPath, '_blank', 'noopener,noreferrer')
       },
       cancel: () => {
         router.push(item.path)

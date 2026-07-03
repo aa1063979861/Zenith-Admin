@@ -7,17 +7,26 @@
  **********************************/
 
 import { generate, getRgbStr } from '@arco-design/color'
-import { useDark } from '@vueuse/core'
 import { defineStore } from 'pinia'
-import { defaultLayout, defaultPrimaryColor, naiveThemeOverrides } from '@/settings'
+import { defaultLayout, defaultPrimaryColor, layoutSettingVisible, naiveThemeOverrides } from '@/settings'
+
+function createDefaultRuntimeConfig() {
+  return {
+    layoutSettingVisible,
+    performerDefaultsToReceiver: true,
+    serviceYearPreviousYearDefault: true,
+  }
+}
 
 export const useAppStore = defineStore('app', {
   state: () => ({
     collapsed: false,
-    isDark: useDark(),
+    mobileSidebarVisible: false,
+    isDark: false,
     layout: defaultLayout,
     primaryColor: defaultPrimaryColor,
     naiveThemeOverrides,
+    runtimeConfig: createDefaultRuntimeConfig(),
   }),
   actions: {
     switchCollapsed() {
@@ -25,6 +34,9 @@ export const useAppStore = defineStore('app', {
     },
     setCollapsed(b) {
       this.collapsed = b
+    },
+    setMobileSidebarVisible(visible) {
+      this.mobileSidebarVisible = visible
     },
     toggleDark() {
       this.isDark = !this.isDark
@@ -35,12 +47,21 @@ export const useAppStore = defineStore('app', {
     setPrimaryColor(color) {
       this.primaryColor = color
     },
+    setRuntimeConfig(config = {}) {
+      this.runtimeConfig = {
+        ...createDefaultRuntimeConfig(),
+        ...config,
+      }
+    },
     setThemeColor(color = this.primaryColor, isDark = this.isDark) {
+      document.documentElement.classList.remove('dark')
+      document.documentElement.classList.toggle('eye-care', isDark)
+      document.body.classList.toggle('eye-care', isDark)
       const colors = generate(color, {
         list: true,
-        dark: isDark,
       })
       document.body.style.setProperty('--primary-color', getRgbStr(colors[5]))
+      document.body.style.setProperty('--zenith-primary-color', getRgbStr(colors[5]))
       this.naiveThemeOverrides.common = Object.assign(this.naiveThemeOverrides.common || {}, {
         primaryColor: colors[5],
         primaryColorHover: colors[4],
@@ -50,7 +71,7 @@ export const useAppStore = defineStore('app', {
     },
   },
   persist: {
-    pick: ['collapsed', 'layout', 'primaryColor', 'naiveThemeOverrides'],
+    pick: ['collapsed', 'isDark', 'layout', 'primaryColor', 'naiveThemeOverrides'],
     storage: sessionStorage,
   },
 })

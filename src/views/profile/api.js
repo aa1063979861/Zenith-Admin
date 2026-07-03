@@ -10,5 +10,8 @@ import { request } from '@/utils'
 
 export default {
   changePassword: data => request.post('/auth/password', data),
-  updateProfile: data => request.patch(`/user/profile/${data.id}`, data),
+  updateProfile: ({ id, ...data }) => request.patch(`/user/profile/${id}`, data),
+  uploadAvatar: (id, data) => request.post(`/user/profile/${id}/avatar`, data, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
 }

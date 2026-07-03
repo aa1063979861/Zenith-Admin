@@ -1,6 +1,4 @@
-import { cloneDeep } from 'lodash-es'
 import api from '@/api'
-import { basePermissions } from '@/settings'
 
 export async function getUserInfo() {
   const res = await api.getUser()
@@ -8,8 +6,18 @@ export async function getUserInfo() {
   return {
     id,
     username,
+    enable: res.data?.enable,
     avatar: profile?.avatar,
     nickName: profile?.nickName,
+    employeeName: profile?.employeeName,
+    employeeNo: profile?.employeeNo,
+    departmentName: profile?.departmentName,
+    positionName: profile?.positionName,
+    phone: profile?.phone,
+    entryDate: profile?.entryDate,
+    active: profile?.active,
+    userKind: res.data?.userKind,
+    builtIn: res.data?.builtIn,
     gender: profile?.gender,
     address: profile?.address,
     email: profile?.email,
@@ -19,13 +27,23 @@ export async function getUserInfo() {
 }
 
 export async function getPermissions() {
-  let asyncPermissions = []
   try {
     const res = await api.getRolePermissions()
-    asyncPermissions = res?.data || []
+    return res?.data || []
   }
   catch (error) {
     console.error(error)
+    return []
   }
-  return cloneDeep(basePermissions).concat(asyncPermissions)
+}
+
+export async function getRuntimeConfig() {
+  try {
+    const res = await api.getRuntimeConfig()
+    return res?.data || null
+  }
+  catch (error) {
+    console.error(error)
+    return null
+  }
 }

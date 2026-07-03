@@ -10,14 +10,31 @@
   <div
     id="menu-collapse"
     class="f-c-c cursor-pointer rounded-4 auto-bg-hover p-6 text-22 transition-all-300"
-    @click="appStore.switchCollapsed"
+    @click="handleClick"
   >
-    <i :class="appStore.collapsed ? 'i-line-md-menu-unfold-left' : 'i-line-md-menu-fold-left'" />
+    <i :class="iconClass" />
   </div>
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useResponsiveLayout } from '@/composables'
 import { useAppStore } from '@/store'
 
 const appStore = useAppStore()
+const { isTabletOrBelow } = useResponsiveLayout()
+
+const iconClass = computed(() => {
+  if (isTabletOrBelow.value)
+    return 'i-line-md-menu-unfold-left'
+  return appStore.collapsed ? 'i-line-md-menu-unfold-left' : 'i-line-md-menu-fold-left'
+})
+
+function handleClick() {
+  if (isTabletOrBelow.value) {
+    appStore.setMobileSidebarVisible(true)
+    return
+  }
+  appStore.switchCollapsed()
+}
 </script>

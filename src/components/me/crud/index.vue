@@ -8,56 +8,63 @@
 
 <template>
   <div class="h-full flex flex-col overflow-hidden">
-    <AppCard v-if="$slots.default" bordered bg="#fafafc dark:black" class="mb-30 min-h-60 rounded-4">
-      <form class="flex justify-between p-16" @submit.prevent="handleSearch()">
-        <n-scrollbar x-scrollable>
-          <n-space :wrap="!expand || isExpanded" :size="[32, 16]" class="p-10">
+    <div v-if="$slots.default" class="me-crud-query-shell">
+      <form class="me-crud-query-form zenith-filter-bar flex justify-between" data-filter-collapsed-rows="all" @submit.prevent="handleSearch()">
+        <div class="me-crud-query-fields">
+          <n-space wrap :size="[12, 8]">
             <slot />
           </n-space>
-        </n-scrollbar>
-        <div class="flex-shrink-0 p-10">
-          <n-button ghost type="primary" @click="handleReset">
-            <i class="i-fe:rotate-ccw mr-4" />
-            重置
-          </n-button>
-          <n-button attr-type="submit" class="ml-20" type="primary">
-            <i class="i-fe:search mr-4" />
-            搜索
-          </n-button>
+        </div>
+        <div class="me-crud-query-actions zenith-filter-actions flex-shrink-0">
+          <n-space :size="8" justify="end">
+            <n-button attr-type="submit" type="primary">
+              <i class="i-fe:search mr-4" />
+              查询
+            </n-button>
+            <n-button attr-type="button" secondary @click="handleReset">
+              <i class="i-fe:rotate-ccw mr-4" />
+              重置
+            </n-button>
+            <slot name="query-actions" />
 
-          <template v-if="expand">
-            <n-button v-if="!isExpanded" type="primary" text @click="toggleExpand">
-              <i class="i-fe:chevrons-down ml-4" />
-              展开
-            </n-button>
-            <n-button v-else text type="primary" @click="toggleExpand">
-              <i class="i-fe:chevrons-up ml-4" />
-              收起
-            </n-button>
-          </template>
+            <template v-if="expand">
+              <n-button v-if="!isExpanded" attr-type="button" type="primary" text @click="toggleExpand">
+                <i class="i-fe:chevrons-down mr-4" />
+                展开
+              </n-button>
+              <n-button v-else attr-type="button" text type="primary" @click="toggleExpand">
+                <i class="i-fe:chevrons-up mr-4" />
+                收起
+              </n-button>
+            </template>
+          </n-space>
         </div>
       </form>
-    </AppCard>
+    </div>
 
-    <NDataTable
+    <EnhancedDataTable
+      :storage-key="resolvedStorageKey"
       :remote="remote"
       :loading="loading"
-      :scroll-x="scrollX"
-      :columns="columns"
+      :min-scroll-x="scrollX"
+      :columns="enhancedColumns"
       :data="tableData"
       :row-key="(row) => row[rowKey]"
+      :row-action="rowAction"
+      :row-action-disabled="rowActionDisabled"
       :pagination="isPagination ? pagination : false"
+      :show-toolbar="false"
       flex-height
       class="flex-1"
       @update:checked-row-keys="onChecked"
-      @update:page="onPageChange"
+      @update:sorter="onSorterChange"
     />
   </div>
 </template>
 
 <script setup>
-import { NDataTable } from 'naive-ui'
-import { utils, writeFile } from 'xlsx'
+import { EnhancedDataTable } from '@/components/common'
+import { createTablePagination, downloadCsv, enhanceTableColumns } from '@/utils'
 
 const props = defineProps({
   /**
@@ -86,6 +93,10 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  storageKey: {
+    type: String,
+    default: '',
+  },
   /** queryBar中的参数 */
   queryItems: {
     type: Object,
@@ -96,7 +107,7 @@ const props = defineProps({
   /**
    * ! 约定接口入参出参
    * 分页模式需约定分页接口入参
-   *    @pageSize 分页参数：一页展示多少条，默认10
+   *    @pageSize 分页参数：一页展示多少条，默认50
    *    @pageNo   分页参数：页码，默认1
    * 需约定接口出参
    *    @pageData 分页模式必须,非分页模式如果没有pageData则取上一层data
@@ -108,19 +119,35 @@ const props = defineProps({
   },
   /** 是否支持展开 */
   expand: Boolean,
+  rowAction: {
+    type: Function,
+    default: undefined,
+  },
+  rowActionDisabled: {
+    type: Function,
+    default: undefined,
+  },
 })
 
 const emit = defineEmits(['update:queryItems', 'onChecked', 'onDataChange'])
 const loading = ref(false)
 const initQuery = { ...props.queryItems }
 const tableData = ref([])
-const pagination = reactive({
-  page: 1,
-  pageSize: 10,
-  prefix({ itemCount }) {
-    return `共 ${itemCount} 条数据`
-  },
+const remoteSorter = ref({
+  sortKey: '',
+  sortOrder: false,
 })
+const pagination = reactive(createTablePagination({
+  page: 1,
+  onUpdatePage: onPageChange,
+  onUpdatePageSize: onPageSizeChange,
+}))
+const enhancedColumns = computed(() => enhanceTableColumns(props.columns, {
+  index: !props.columns.some(column => column.key === '__index' || column.title === '序号'),
+  remote: props.remote,
+  remoteSortable: props.remote,
+}))
+const resolvedStorageKey = computed(() => props.storageKey || `me-crud.${props.rowKey}.${props.columns.map(column => column.key || column.type || column.title).join('.')}`)
 
 // 是否展开
 const isExpanded = ref(false)
@@ -140,6 +167,7 @@ async function handleQuery() {
     const { data } = await props.getData({
       ...props.queryItems,
       ...paginationParams,
+      ...resolveSorterParams(),
     })
     tableData.value = data?.pageData || data
     pagination.itemCount = data.total ?? data.length
@@ -183,22 +211,42 @@ function onPageChange(currentPage) {
     handleQuery()
   }
 }
+function onPageSizeChange(pageSize) {
+  pagination.pageSize = pageSize
+  pagination.page = 1
+  handleQuery()
+}
 function onChecked(rowKeys) {
   if (props.columns.some(item => item.type === 'selection')) {
     emit('onChecked', rowKeys)
+  }
+}
+function onSorterChange(sorter) {
+  if (!props.remote)
+    return
+  const nextSorter = Array.isArray(sorter) ? sorter[0] : sorter
+  remoteSorter.value = nextSorter?.order
+    ? { sortKey: String(nextSorter.columnKey), sortOrder: nextSorter.order }
+    : { sortKey: '', sortOrder: false }
+  pagination.page = 1
+  handleQuery()
+}
+function resolveSorterParams() {
+  if (!props.remote || !remoteSorter.value.sortKey || !remoteSorter.value.sortOrder)
+    return {}
+  return {
+    sortKey: remoteSorter.value.sortKey,
+    sortOrder: remoteSorter.value.sortOrder,
   }
 }
 function handleExport(columns = props.columns, data = tableData.value) {
   if (!data?.length)
     return $message.warning('没有数据')
   const columnsData = columns.filter(item => !!item.title && !item.hideInExcel)
-  const thKeys = columnsData.map(item => item.key)
-  const thData = columnsData.map(item => item.title)
-  const trData = data.map(item => thKeys.map(key => item[key]))
-  const sheet = utils.aoa_to_sheet([thData, ...trData])
-  const workBook = utils.book_new()
-  utils.book_append_sheet(workBook, sheet, '数据报表')
-  writeFile(workBook, '数据报表.xlsx')
+  const rows = data.map(item => Object.fromEntries(
+    columnsData.map(column => [column.title, item[column.key]]),
+  ))
+  downloadCsv('数据报表.csv', rows)
 }
 
 defineExpose({
@@ -207,3 +255,47 @@ defineExpose({
   handleExport,
 })
 </script>
+
+<style scoped>
+.me-crud-query-shell {
+  flex: 0 0 auto;
+}
+
+.me-crud-query-fields {
+  min-width: 0;
+  flex: 1;
+}
+
+.me-crud-query-actions {
+  display: flex;
+  align-self: flex-start;
+  align-items: center;
+  justify-content: flex-end;
+  padding-left: 10px;
+}
+
+@media (max-width: 767px) {
+  .me-crud-query-form {
+    flex-direction: column;
+    gap: 4px;
+    padding: 0 !important;
+  }
+
+  .me-crud-query-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    padding-left: 0;
+    padding-top: 0 !important;
+  }
+
+  .me-crud-query-fields :deep(.n-space),
+  .me-crud-query-fields :deep(.n-space-item) {
+    width: 100%;
+  }
+
+  .me-crud-query-fields :deep(.n-space) {
+    flex-wrap: wrap !important;
+  }
+}
+</style>

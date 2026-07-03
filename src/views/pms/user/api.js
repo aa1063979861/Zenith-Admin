@@ -8,12 +8,30 @@
 
 import { request } from '@/utils'
 
+let enabledRolesCache = null
+let enabledRolesPromise = null
+
 export default {
   create: data => request.post('/user', data),
-  read: (params = {}) => request.get('/user', { params }),
+  read: (params = {}) => request.get('/user', { params: { ...params, userKind: 'EMPLOYEE' } }),
   update: data => request.patch(`/user/${data.id}`, data),
   delete: id => request.delete(`/user/${id}`),
-  resetPwd: (id, data) => request.patch(`/user/password/reset/${id}`, data),
+  resetPwd: id => request.patch(`/user/password/reset/${id}`),
 
-  getAllRoles: () => request.get('/role?enable=1'),
+  getAllRoles: () => {
+    if (enabledRolesCache)
+      return Promise.resolve({ data: enabledRolesCache })
+    if (enabledRolesPromise)
+      return enabledRolesPromise
+
+    enabledRolesPromise = request.get('/role?enable=1')
+      .then((res) => {
+        enabledRolesCache = res.data || []
+        return res
+      })
+      .finally(() => {
+        enabledRolesPromise = null
+      })
+    return enabledRolesPromise
+  },
 }

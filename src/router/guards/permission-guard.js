@@ -7,8 +7,8 @@
  **********************************/
 
 import api from '@/api'
-import { useAuthStore, usePermissionStore, useUserStore } from '@/store'
-import { getPermissions, getUserInfo } from '@/store/helper'
+import { useAppStore, useAuthStore, usePermissionStore, useUserStore } from '@/store'
+import { getPermissions, getRuntimeConfig, getUserInfo } from '@/store/helper'
 
 const WHITE_LIST = ['/login', '/404']
 export function createPermissionGuard(router) {
@@ -20,7 +20,7 @@ export function createPermissionGuard(router) {
     if (!token) {
       if (WHITE_LIST.includes(to.path))
         return true
-      return { path: 'login', query: { ...to.query, redirect: to.path } }
+      return { path: '/login', query: { ...to.query, redirect: to.fullPath } }
     }
 
     // 有token的情况
@@ -30,11 +30,18 @@ export function createPermissionGuard(router) {
       return true
 
     const userStore = useUserStore()
+    const appStore = useAppStore()
     const permissionStore = usePermissionStore()
     if (!userStore.userInfo) {
-      const [user, permissions] = await Promise.all([getUserInfo(), getPermissions()])
+      const [user, permissions, runtimeConfig] = await Promise.all([getUserInfo(), getPermissions(), getRuntimeConfig()]).catch(() => {
+        authStore.resetLoginState()
+        return [null, null, null]
+      })
+      if (!user)
+        return { path: '/login', query: { ...to.query, redirect: to.fullPath } }
       userStore.setUser(user)
       permissionStore.setPermissions(permissions)
+      appStore.setRuntimeConfig(runtimeConfig || {})
       const routeComponents = import.meta.glob('@/views/**/*.vue')
       permissionStore.accessRoutes.forEach((route) => {
         route.component = routeComponents[route.component] || undefined

@@ -7,10 +7,10 @@
  --------------------------------->
 
 <template>
-  <main class="h-full flex-col flex-1 overflow-hidden bg-#f5f6fb dark:bg-#121212">
+  <main class="common-page h-full flex-col flex-1 overflow-hidden bg-#f5f6fb dark:bg-#121212">
     <AppCard
       v-if="showHeader"
-      class="sticky top-0 z-1 min-h-60 flex items-center justify-between px-24"
+      class="common-page-header sticky top-0 z-1 min-h-60 flex items-center justify-between px-24"
       border-b="1px solid light_border dark:dark_border"
     >
       <slot v-if="$slots.header" name="header" />
@@ -37,7 +37,7 @@
         <slot name="action" />
       </template>
     </AppCard>
-    <AppCard class="cus-scroll m-12 h-0 flex-1 rounded-8 p-24" bordered>
+    <AppCard class="common-page-body cus-scroll m-12 h-0 flex-1 rounded-8 p-24" bordered>
       <slot />
     </AppCard>
 
@@ -61,7 +61,7 @@ defineProps({
   },
   showHeader: {
     type: Boolean,
-    default: true,
+    default: false,
   },
   title: {
     type: String,

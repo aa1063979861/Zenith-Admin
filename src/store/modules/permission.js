@@ -18,6 +18,7 @@ export const usePermissionStore = defineStore('permission', {
   }),
   actions: {
     setPermissions(permissions) {
+      this.accessRoutes = []
       this.permissions = permissions
       this.menus = this.permissions
         .filter(item => item.type === 'MENU')
@@ -26,7 +27,7 @@ export const usePermissionStore = defineStore('permission', {
         .sort((a, b) => a.order - b.order)
     },
     getMenuItem(item, parent) {
-      const route = this.generateRoute(item, item.show ? null : parent?.key)
+      const route = this.generateRoute(item, item.activeMenuCode || (item.show ? null : parent?.key))
       if (item.enable && route.path && !route.path.startsWith('http'))
         this.accessRoutes.push(route)
       const menuItem = {

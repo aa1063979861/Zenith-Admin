@@ -19,8 +19,8 @@ function handleAuthExpired(content, needTip) {
     title: '提示',
     type: 'info',
     content,
-    confirm() {
-      useAuthStore().logout()
+    async confirm() {
+      await useAuthStore().logout()
       window.$message?.success('已退出登录')
       isConfirming = false
     },
@@ -31,15 +31,19 @@ function handleAuthExpired(content, needTip) {
   return false
 }
 
-export function resolveResError(code, message, needTip = true) {
+export function resolveResError(code, message, needTip = true, options = {}) {
+  const { authExpired = true } = options
   switch (code) {
     case 401:
-      return handleAuthExpired('登录已过期，是否重新登录？', needTip)
+      if (authExpired)
+        return handleAuthExpired('登录已过期，是否重新登录？', needTip)
+      message = message ?? '认证失败'
+      break
     case 11007:
     case 11008:
       return handleAuthExpired(`${message}，是否重新登录？`, needTip)
     case 403:
-      message = '请求被拒绝'
+      message = message || '请求被拒绝'
       break
     case 404:
       message = '请求资源或接口不存在'

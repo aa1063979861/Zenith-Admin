@@ -20,14 +20,16 @@ import { pluginIcons, pluginPagePathes } from './build/plugin-isme'
 
 export default defineConfig(({ mode }) => {
   const viteEnv = loadEnv(mode, process.cwd())
-  const { VITE_PUBLIC_PATH, VITE_PROXY_TARGET } = viteEnv
+  const { VITE_DEV_HOST, VITE_DEV_PORT, VITE_PUBLIC_PATH, VITE_PROXY_TARGET } = viteEnv
+  const isProduction = mode === 'production'
+  const devServerPort = Number(VITE_DEV_PORT || 3200)
 
   return {
     base: VITE_PUBLIC_PATH || '/',
     plugins: [
       Vue(),
       VueJsx(),
-      VueDevTools(),
+      !isProduction && VueDevTools(),
       Unocss(),
       AutoImport({
         imports: ['vue', 'vue-router'],
@@ -43,7 +45,7 @@ export default defineConfig(({ mode }) => {
       pluginIcons(),
       // 移除非必要的vue-router动态路由警告: No match found for location with path
       removeNoMatch(),
-    ],
+    ].filter(Boolean),
     resolve: {
       alias: {
         '@': path.resolve(process.cwd(), 'src'),
@@ -51,9 +53,12 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      host: '0.0.0.0',
-      port: 3200,
+      host: VITE_DEV_HOST || '0.0.0.0',
+      port: Number.isFinite(devServerPort) ? devServerPort : 3200,
       open: false,
+      watch: {
+        ignored: ['**/.runtime/**'],
+      },
       proxy: {
         '/api': {
           target: VITE_PROXY_TARGET,
@@ -66,12 +71,6 @@ export default defineConfig(({ mode }) => {
               proxyRes.headers['x-real-url'] = new URL(req.url || '', options.target)?.href || ''
             })
           },
-        },
-        '/runapi': {
-          target: 'https://runapi.co',
-          changeOrigin: true,
-          rewrite: path => path.replace(/^\/runapi/, '/v1'),
-          secure: false,
         },
       },
     },

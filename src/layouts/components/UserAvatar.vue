@@ -7,12 +7,22 @@
  --------------------------------->
 
 <template>
-  <n-dropdown :options="options" @select="handleSelect">
-    <div id="user-dropdown" class="flex cursor-pointer items-center">
-      <n-avatar round :size="36" :src="userStore.avatar" />
-      <div v-if="userStore.userInfo" class="ml-12 flex-col flex-shrink-0 items-center">
-        <span class="text-14">{{ userStore.nickName ?? userStore.username }}</span>
-        <span class="text-12 opacity-50">[{{ userStore.currentRole?.name }}]</span>
+  <n-dropdown
+    :show="showDropdown"
+    :options="options"
+    trigger="manual"
+    placement="bottom-end"
+    @clickoutside="showDropdown = false"
+    @select="handleSelect"
+  >
+    <div id="user-dropdown" class="flex cursor-pointer items-center" @click.stop="showDropdown = !showDropdown">
+      <span class="header-avatar">
+        <img v-if="avatarUrl" :src="avatarUrl" alt="">
+        <span v-else>{{ avatarText }}</span>
+      </span>
+      <div v-if="userStore.userInfo && !isTabletOrBelow" class="ml-12 flex-col flex-shrink-0 items-center">
+        <span class="text-14">{{ displayName }}</span>
+        <span class="text-12 opacity-50">[{{ identityName }}]</span>
       </div>
     </div>
   </n-dropdown>
@@ -21,28 +31,47 @@
 </template>
 
 <script setup>
-import api from '@/api'
+import { useResponsiveLayout } from '@/composables'
 import { RoleSelect } from '@/layouts/components'
-import { useAuthStore, usePermissionStore, useUserStore } from '@/store'
+import { useAuthStore, useUserStore } from '@/store'
+import { resolveAvatarText, resolveUserAvatar } from '@/utils'
 
 const router = useRouter()
 const userStore = useUserStore()
 const authStore = useAuthStore()
-const permissionStore = usePermissionStore()
+const { isTabletOrBelow } = useResponsiveLayout()
 
-const options = reactive([
+const avatarUrl = computed(() => resolveUserAvatar(userStore.avatar))
+const avatarText = computed(() => resolveAvatarText(userStore.userInfo))
+const showDropdown = ref(false)
+
+const displayName = computed(() => {
+  if (userStore.userInfo?.builtIn)
+    return '超级管理员'
+  return userStore.nickName || userStore.username
+})
+
+const identityName = computed(() => {
+  if (userStore.userInfo?.builtIn)
+    return '超级管理员'
+  return userStore.currentRole?.name || '未分配角色'
+})
+
+const canSwitchRole = computed(() => !userStore.userInfo?.builtIn && userStore.roles.length > 1)
+
+const options = computed(() => [
   {
     label: '个人资料',
     key: 'profile',
     icon: () => h('i', { class: 'i-material-symbols:person-outline text-14' }),
-    show: computed(() => permissionStore.accessRoutes?.some(item => item.path === '/profile')),
   },
-  {
-    label: '切换角色',
-    key: 'toggleRole',
-    icon: () => h('i', { class: 'i-basil:exchange-solid text-14' }),
-    show: computed(() => userStore.roles.length > 1),
-  },
+  ...(canSwitchRole.value
+    ? [{
+        label: '切换角色',
+        key: 'toggleRole',
+        icon: () => h('i', { class: 'i-basil:exchange-solid text-14' }),
+      }]
+    : []),
   {
     label: '退出登录',
     key: 'logout',
@@ -52,6 +81,7 @@ const options = reactive([
 
 const roleSelectRef = ref(null)
 function handleSelect(key) {
+  showDropdown.value = false
   switch (key) {
     case 'profile':
       router.push('/profile')
@@ -69,13 +99,7 @@ function handleSelect(key) {
         type: 'info',
         content: '确认退出？',
         async confirm() {
-          try {
-            await api.logout()
-          }
-          catch (error) {
-            console.error(error)
-          }
-          authStore.logout()
+          await authStore.logout()
           $message.success('已退出登录')
         },
       })
@@ -83,3 +107,24 @@ function handleSelect(key) {
   }
 }
 </script>
+
+<style scoped>
+.header-avatar {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #316c72;
+  color: #fff;
+  font-weight: 700;
+}
+
+.header-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+</style>

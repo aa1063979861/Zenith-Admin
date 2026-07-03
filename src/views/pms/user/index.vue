@@ -7,188 +7,211 @@
  --------------------------------->
 
 <template>
-  <CommonPage>
-    <template #action>
-      <NButton v-permission="'AddUser'" type="primary" @click="handleAdd()">
-        <i class="i-material-symbols:add mr-4 text-18" />
-        创建新用户
-      </NButton>
-    </template>
-
+  <CommonPage class="zenith-data-page">
     <MeCrud
       ref="$table"
       v-model:query-items="queryItems"
-      :scroll-x="1200"
+      :scroll-x="1120"
       :columns="columns"
       :get-data="api.read"
+      :row-action="hasPermission('AssignUserRoles') ? handleOpenRolesSet : undefined"
     >
-      <MeQueryItem label="用户名" :label-width="50">
+      <template #query-actions>
+        <NButton v-permission="'AddUser'" type="primary" @click="openCreateUser">
+          <i class="i-material-symbols:add mr-4 text-18" />
+          创建员工账号
+        </NButton>
+      </template>
+
+      <MeQueryItem label="关键字" :label-width="60">
         <n-input
-          v-model:value="queryItems.username"
+          v-model:value="queryItems.keyword"
           type="text"
-          placeholder="请输入用户名"
+          placeholder="姓名、登录账号、显示名"
           clearable
         />
       </MeQueryItem>
 
-      <MeQueryItem label="性别" :label-width="50">
-        <n-select v-model:value="queryItems.gender" clearable :options="genders" />
+      <MeQueryItem label="角色" :label-width="50">
+        <n-select
+          v-model:value="queryItems.roleId"
+          clearable
+          filterable
+          :options="roles"
+          label-field="name"
+          value-field="id"
+          placeholder="全部角色"
+        />
       </MeQueryItem>
 
       <MeQueryItem label="状态" :label-width="50">
         <n-select
           v-model:value="queryItems.enable"
           clearable
-          :options="[
-            { label: '启用', value: 1 },
-            { label: '停用', value: 0 },
-          ]"
+          :options="enabledOptions"
+          placeholder="全部状态"
         />
       </MeQueryItem>
     </MeCrud>
 
-    <MeModal ref="modalRef" width="520px">
+    <MeModal ref="modalRef" width="560px">
       <n-form
         ref="modalFormRef"
-        label-placement="left"
-        label-align="left"
-        :label-width="80"
+        label-placement="top"
         :model="modalForm"
         :disabled="modalAction === 'view'"
       >
-        <n-form-item
-          label="用户名"
-          path="username"
-          :rule="{
-            required: true,
-            message: '请输入用户名',
-            trigger: ['input', 'blur'],
-          }"
-        >
-          <n-input v-model:value="modalForm.username" :disabled="modalAction !== 'add'" />
-        </n-form-item>
-        <n-form-item
-          v-if="['add', 'reset'].includes(modalAction)"
-          :label="modalAction === 'reset' ? '重置密码' : '初始密码'"
-          path="password"
-          :rule="{
-            required: true,
-            message: '请输入密码',
-            trigger: ['input', 'blur'],
-          }"
-        >
-          <n-input v-model:value="modalForm.password" type="password" show-password-on="mousedown" />
-        </n-form-item>
+        <template v-if="modalAction === 'add'">
+          <n-grid cols="1 m:2" :x-gap="12" responsive="screen">
+            <n-form-item-gi
+              label="员工姓名"
+              path="employeeName"
+              :rule="{
+                required: true,
+                message: '请输入员工姓名',
+                trigger: ['input', 'blur'],
+              }"
+            >
+              <n-input v-model:value="modalForm.employeeName" placeholder="员工真实姓名" />
+            </n-form-item-gi>
+            <n-form-item-gi label="账号状态" path="enable">
+              <NSwitch v-model:value="modalForm.enable">
+                <template #checked>
+                  启用
+                </template>
+                <template #unchecked>
+                  停用
+                </template>
+              </NSwitch>
+            </n-form-item-gi>
+          </n-grid>
 
-        <n-form-item v-if="['add', 'setRole'].includes(modalAction)" label="角色" path="roleIds">
-          <n-select
-            v-model:value="modalForm.roleIds"
-            :options="roles"
-            label-field="name"
-            value-field="id"
-            clearable
-            filterable
-            multiple
-          />
-        </n-form-item>
-        <n-form-item v-if="modalAction === 'add'" label="状态" path="enable">
-          <NSwitch v-model:value="modalForm.enable">
-            <template #checked>
-              启用
-            </template>
-            <template #unchecked>
-              停用
-            </template>
-          </NSwitch>
-        </n-form-item>
+          <n-form-item label="角色">
+            <n-select
+              v-model:value="modalForm.roleIds"
+              :options="roles"
+              :render-option="renderRoleOption"
+              label-field="name"
+              value-field="id"
+              clearable
+              filterable
+              multiple
+              placeholder="请选择角色"
+            />
+          </n-form-item>
+        </template>
+
+        <template v-else-if="modalAction === 'setRole'">
+          <n-form-item label="登录账号">
+            <n-input v-model:value="modalForm.username" disabled />
+          </n-form-item>
+          <n-form-item label="角色" path="roleIds">
+            <n-select
+              v-model:value="modalForm.roleIds"
+              :options="roles"
+              :render-option="renderRoleOption"
+              label-field="name"
+              value-field="id"
+              clearable
+              filterable
+              multiple
+              placeholder="请选择角色"
+            />
+          </n-form-item>
+        </template>
       </n-form>
-      <n-alert v-if="modalAction === 'add'" type="warning" closable>
-        详细信息需由用户本人补充修改
-      </n-alert>
     </MeModal>
   </CommonPage>
 </template>
 
 <script setup>
-import { NAvatar, NButton, NSwitch, NTag } from 'naive-ui'
+import { NButton, NCheckbox, NSwitch, NTag, NTooltip } from 'naive-ui'
 import { MeCrud, MeModal, MeQueryItem } from '@/components'
 import { useCrud } from '@/composables'
-import { withPermission } from '@/directives'
+import { hasPermission, withPermission } from '@/directives'
 import { formatDateTime } from '@/utils'
+import { useBusinessStore } from '@/views/business/shared/useBusinessStore'
 import api from './api'
 
 defineOptions({ name: 'UserMgt' })
 
 const $table = ref(null)
+const businessStore = useBusinessStore()
 /** QueryBar筛选参数（可选） */
 const queryItems = ref({})
+const roles = ref([])
 
-onMounted(() => {
+onMounted(async () => {
+  await loadRoles()
   $table.value?.handleSearch()
 })
 
-const genders = [
-  { label: '男', value: 1 },
-  { label: '女', value: 2 },
+const enabledOptions = [
+  { label: '启用', value: 1 },
+  { label: '停用', value: 0 },
 ]
-const roles = ref([])
-api.getAllRoles().then(({ data = [] }) => (roles.value = data))
 
 const {
   modalRef,
   modalFormRef,
   modalForm,
   modalAction,
-  handleAdd,
   handleDelete,
   handleOpen,
   handleSave,
 } = useCrud({
-  name: '用户',
-  initForm: { enable: true },
+  name: '员工账号',
+  initForm: createInitialForm(),
   doCreate: api.create,
   doDelete: api.delete,
   doUpdate: api.update,
-  refresh: () => $table.value?.handleSearch(),
+  refresh: async () => {
+    $table.value?.handleSearch(true)
+    await businessStore.loadEmployees()
+  },
 })
 
 const columns = [
-  {
-    title: '头像',
-    key: 'avatar',
-    width: 80,
-    render: ({ avatar }) =>
-      h(NAvatar, {
-        size: 'medium',
-        src: avatar,
-      }),
-  },
-  { title: '用户名', key: 'username', width: 150, ellipsis: { tooltip: true } },
+  { title: '员工姓名', key: 'employeeName', width: 130, ellipsis: { tooltip: true } },
+  { title: '登录账号', key: 'username', width: 140, ellipsis: { tooltip: true } },
   {
     title: '角色',
     key: 'roles',
-    width: 200,
+    minWidth: 220,
+    sortable: false,
     ellipsis: { tooltip: true },
     render: ({ roles }) => {
       if (roles?.length) {
-        return roles.map((item, index) =>
-          h(
-            NTag,
-            { type: 'success', style: index > 0 ? 'margin-left: 8px;' : '' },
-            { default: () => item.name },
+        const visibleRoles = roles.slice(0, 2)
+        const hiddenRoles = roles.slice(2)
+        return [
+          ...visibleRoles.map((item, index) =>
+            h(
+              NTag,
+              { type: 'success', style: index > 0 ? 'margin-left: 8px;' : '' },
+              { default: () => item.name },
+            ),
           ),
-        )
+          hiddenRoles.length
+            ? h(
+                NTooltip,
+                { trigger: 'hover' },
+                {
+                  trigger: () =>
+                    h(
+                      NTag,
+                      { type: 'default', style: 'margin-left: 8px;' },
+                      { default: () => `+${hiddenRoles.length}` },
+                    ),
+                  default: () => hiddenRoles.map(item => item.name).join('、'),
+                },
+              )
+            : null,
+        ].filter(Boolean)
       }
       return '暂无角色'
     },
   },
-  {
-    title: '性别',
-    key: 'gender',
-    width: 80,
-    render: ({ gender }) => genders.find(item => gender === item.value)?.label ?? '',
-  },
-  { title: '邮箱', key: 'email', width: 150, ellipsis: { tooltip: true } },
   {
     title: '创建时间',
     key: 'createDate',
@@ -202,7 +225,7 @@ const columns = [
     key: 'enable',
     width: 120,
     render: row =>
-      h(
+      withPermission(h(
         NSwitch,
         {
           size: 'small',
@@ -215,73 +238,98 @@ const columns = [
           checked: () => '启用',
           unchecked: () => '停用',
         },
-      ),
+      ), 'ToggleUser'),
   },
   {
     title: '操作',
     key: 'actions',
-    width: 420,
+    width: 360,
     align: 'right',
     fixed: 'right',
     hideInExcel: true,
     render(row) {
       return [
-        withPermission(
-          h(NButton, {
-            size: 'small',
-            type: 'primary',
-            secondary: true,
-          }, {
-            default: () => '超管专属',
-            icon: () => h('i', { class: 'i-carbon:user-role text-14' }),
-          }),
-          'SuperAdmin',
-        ),
-        h(
+        withPermission(h(
           NButton,
           {
             size: 'small',
             type: 'primary',
-            class: 'ml-12px',
-            secondary: true,
             onClick: () => handleOpenRolesSet(row),
           },
           {
             default: () => '分配角色',
             icon: () => h('i', { class: 'i-carbon:user-role text-14' }),
           },
-        ),
-        h(
+        ), 'AssignUserRoles'),
+        withPermission(h(
           NButton,
           {
             size: 'small',
-            type: 'primary',
+            secondary: true,
             style: 'margin-left: 12px;',
-            onClick: () => handleOpen({ action: 'reset', title: '重置密码', row, onOk: onSave }),
+            loading: !!row.resetLoading,
+            disabled: !!row.resetLoading,
+            onClick: () => handleResetPassword(row),
           },
           {
             default: () => '重置密码',
             icon: () => h('i', { class: 'i-radix-icons:reset text-14' }),
           },
-        ),
-
-        h(
+        ), 'ResetUserPassword'),
+        withPermission(h(
           NButton,
           {
             size: 'small',
             type: 'error',
             style: 'margin-left: 12px;',
-            onClick: () => handleDelete(row.id),
+            onClick: () => handleDelete(row.id, {
+              title: '删除员工账号',
+              content: `确认删除员工账号「${row.employeeName || row.username}」？删除后该员工不能再登录系统。`,
+            }),
           },
           {
             default: () => '删除',
             icon: () => h('i', { class: 'i-material-symbols:delete-outline text-14' }),
           },
-        ),
-      ]
+        ), 'DeleteUser'),
+      ].filter(Boolean)
     },
   },
 ]
+function createInitialForm() {
+  return {
+    enable: true,
+    employeeName: '',
+    roleIds: [],
+  }
+}
+
+async function loadRoles() {
+  const { data = [] } = await api.getAllRoles()
+  roles.value = data
+}
+
+function renderRoleOption({ node, option, selected }) {
+  return h('div', node.props, [
+    h('div', { class: 'n-base-select-option__content', style: 'display: flex; align-items: center; gap: 8px;' }, [
+      h(NCheckbox, {
+        checked: selected,
+        focusable: false,
+        style: 'pointer-events: none;',
+      }),
+      h('span', option.name || option.label),
+    ]),
+  ])
+}
+
+function openCreateUser() {
+  handleOpen({
+    action: 'add',
+    title: '创建员工账号',
+    row: createInitialForm(),
+    onOk: onSave,
+  })
+}
 
 async function handleEnable(row) {
   row.enableLoading = true
@@ -289,11 +337,25 @@ async function handleEnable(row) {
     await api.update({ id: row.id, enable: !row.enable })
     row.enableLoading = false
     $message.success('操作成功')
-    $table.value?.handleSearch()
+    $table.value?.handleSearch(true)
   }
   catch (error) {
     console.error(error)
     row.enableLoading = false
+  }
+}
+
+async function handleResetPassword(row) {
+  row.resetLoading = true
+  try {
+    await api.resetPwd(row.id)
+    $message.success('密码已重置为初始密码')
+  }
+  catch (error) {
+    console.error(error)
+  }
+  finally {
+    row.resetLoading = false
   }
 }
 
@@ -314,12 +376,6 @@ function onSave() {
       cb: () => $message.success('分配成功'),
     })
   }
-  else if (modalAction.value === 'reset') {
-    return handleSave({
-      api: () => api.resetPwd(modalForm.value.id, modalForm.value),
-      cb: () => $message.success('密码重置成功'),
-    })
-  }
-  handleSave()
+  return handleSave()
 }
 </script>

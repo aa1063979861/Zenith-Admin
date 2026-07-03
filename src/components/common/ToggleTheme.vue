@@ -1,46 +1,32 @@
 <template>
-  <i
-    id="toggleTheme"
-    class="mr-16 cursor-pointer"
-    :class="isDark ? 'i-fe:moon' : 'i-fe:sun'"
-    @click="toggleDark"
-  />
+  <n-tooltip trigger="hover" placement="bottom">
+    <template #trigger>
+      <i
+        id="toggleTheme"
+        class="mr-16 cursor-pointer"
+        :class="isDark ? 'i-fe:moon' : 'i-fe:sun'"
+        role="button"
+        tabindex="0"
+        :title="tooltipText"
+        :aria-label="tooltipText"
+        :aria-pressed="isDark"
+        @click="toggleDark"
+        @keydown.enter.prevent="toggleDark"
+        @keydown.space.prevent="toggleDark"
+      />
+    </template>
+    {{ tooltipText }}
+  </n-tooltip>
 </template>
 
 <script setup>
-import { useDark, useToggle } from '@vueuse/core'
 import { useAppStore } from '@/store'
 
 const appStore = useAppStore()
-const isDark = useDark()
-async function toggleDark({ clientX, clientY }) {
-  function handler() {
-    appStore.toggleDark()
-    useToggle(isDark)()
-  }
+const isDark = computed(() => appStore.isDark)
+const tooltipText = computed(() => isDark.value ? '关闭护眼模式' : '开启护眼模式')
 
-  if (!document.startViewTransition) {
-    return handler()
-  }
-
-  const clipPath = [
-    `circle(0px at ${clientX}px ${clientY}px)`,
-    `circle(${Math.hypot(
-      Math.max(clientX, window.innerWidth - clientX),
-      Math.max(clientY, window.innerHeight - clientY),
-    )}px at ${clientX}px ${clientY}px)`,
-  ]
-
-  await document.startViewTransition(handler).ready
-
-  document.documentElement.animate(
-    { clipPath: isDark.value ? clipPath.reverse() : clipPath },
-    {
-      duration: 500,
-      easing: 'ease-in',
-      pseudoElement: `::view-transition-${isDark.value ? 'old' : 'new'}(root)`,
-      fill: 'both',
-    },
-  )
+function toggleDark() {
+  appStore.toggleDark()
 }
 </script>

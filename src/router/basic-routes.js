@@ -4,7 +4,6 @@ export const basicRoutes = [
     path: '/login',
     component: () => import('@/views/login/index.vue'),
     meta: {
-      title: '登录页',
       layout: 'empty',
     },
   },
@@ -15,6 +14,24 @@ export const basicRoutes = [
     component: () => import('@/views/home/index.vue'),
     meta: {
       title: '首页',
+    },
+  },
+
+  {
+    name: 'Profile',
+    path: '/profile',
+    component: () => import('@/views/profile/index.vue'),
+    meta: {
+      title: '个人资料',
+    },
+  },
+
+  {
+    name: 'ClientDetail',
+    path: '/clients/:id',
+    component: () => import('@/views/business/clients/detail.vue'),
+    meta: {
+      title: '客户详情',
     },
   },
 

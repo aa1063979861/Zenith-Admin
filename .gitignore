@@ -1,4 +1,33 @@
-*.local
+# Dependencies
 node_modules
+
+# Build output
 dist
 stats.html
+
+# Local environment
+*.local
+.env
+.env.development
+.env.production
+.env.local
+.env.*.local
+apps/*/.env
+apps/*/.env.local
+apps/*/.env.*.local
+
+# Local database/runtime data
+.runtime
+.zenith-mysql-data
+../.zenith-mysql-data
+apps/*/uploads/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+.codex-temp-*.json
+
+# OS files
+.DS_Store
+Thumbs.db

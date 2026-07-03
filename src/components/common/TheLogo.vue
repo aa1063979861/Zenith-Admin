@@ -6,7 +6,9 @@
  - Copyright © 2023 Ronnie Zhang(大脸怪) | https://isme.top
  --------------------------------->
 <template>
-  <div class="h-32 w-32 rounded-4 bg-primary">
-    <img src="@/assets/images/isme.png" alt="Logo">
-  </div>
+  <img class="block h-full w-full object-contain" :src="companyLogo" alt="" aria-hidden="true">
 </template>
+
+<script setup>
+import companyLogo from '@/assets/images/company-logo.png'
+</script>

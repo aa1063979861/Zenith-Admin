@@ -56,6 +56,8 @@ const roleCode = ref(userStore.currentRole?.code ?? roles.value[0]?.code ?? '')
 
 const [modalRef, okLoading] = useModal()
 function open(options) {
+  roles.value = userStore.roles || []
+  roleCode.value = userStore.currentRole?.code ?? roles.value[0]?.code ?? ''
   modalRef.value?.open({
     ...options,
   })
@@ -78,8 +80,7 @@ async function setCurrentRole() {
 }
 
 async function logout() {
-  await api.logout()
-  authStore.logout()
+  await authStore.logout()
   modalRef.value?.close()
   $message.success('已退出登录')
 }

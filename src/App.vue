@@ -11,7 +11,6 @@
     class="wh-full"
     :locale="zhCN"
     :date-locale="dateZhCN"
-    :theme="appStore.isDark ? darkTheme : undefined"
     :theme-overrides="appStore.naiveThemeOverrides"
   >
     <router-view v-if="Layout" v-slot="{ Component, route: curRoute }">
@@ -23,16 +22,15 @@
         </transition>
       </component>
 
-      <LayoutSetting v-if="layoutSettingVisible" class="fixed right-12 top-1/2 z-999" />
+      <LayoutSetting v-if="showLayoutSetting" />
     </router-view>
   </n-config-provider>
 </template>
 
 <script setup>
-import { darkTheme, dateZhCN, zhCN } from 'naive-ui'
+import { dateZhCN, zhCN } from 'naive-ui'
 import { LayoutSetting } from '@/components'
 import { useAppStore, useTabStore } from '@/store'
-import { layoutSettingVisible } from './settings'
 
 const layouts = new Map()
 function getLayout(name) {
@@ -58,6 +56,7 @@ const tabStore = useTabStore()
 const keepAliveNames = computed(() => {
   return tabStore.tabs.filter(item => item.keepAlive).map(item => item.name)
 })
+const showLayoutSetting = computed(() => appStore.runtimeConfig.layoutSettingVisible && route.name !== 'Login')
 
 watchEffect(() => {
   appStore.setThemeColor(appStore.primaryColor, appStore.isDark)

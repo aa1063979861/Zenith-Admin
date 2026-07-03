@@ -58,14 +58,14 @@ const config = {
     {
       el: '#toggleTheme',
       tipPosition: 'bottom',
-      title: '切换系统主题',
-      content: '一键开启护眼模式',
+      title: '护眼模式',
+      content: '在亮色和护眼深色之间切换，适合长时间使用',
     },
     {
       el: '#fullscreen',
       tipPosition: 'bottom',
-      title: '全屏/退出全屏',
-      content: '一键开启全屏',
+      title: '全屏模式',
+      content: '进入或退出全屏，减少浏览器界面干扰',
     },
     {
       el: '#theme-setting',

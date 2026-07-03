@@ -8,6 +8,7 @@
 
 import { defineStore } from 'pinia'
 import { usePermissionStore, useRouterStore, useTabStore, useUserStore } from '@/store'
+import { authRequest } from '@/utils/http/auth-request'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -17,17 +18,24 @@ export const useAuthStore = defineStore('auth', {
     setToken({ accessToken }) {
       this.accessToken = accessToken
     },
+    async refreshToken() {
+      const { data: response } = await authRequest.post('/auth/refresh/token')
+      this.setToken(response.data)
+      return response.data
+    },
     resetToken() {
       this.$reset()
     },
     toLogin() {
-      const { router, route } = useRouterStore()
-      router.replace({
+      const { router } = useRouterStore()
+      return router.replace({
         path: '/login',
-        query: route.query,
       })
     },
     async switchCurrentRole(data) {
+      await this.replaceLoginSession(data)
+    },
+    async replaceLoginSession(data) {
       this.resetLoginState()
       await nextTick()
       this.setToken(data)
@@ -49,11 +57,21 @@ export const useAuthStore = defineStore('auth', {
       this.resetToken()
     },
     async logout() {
+      try {
+        await authRequest.post('/auth/logout')
+      }
+      finally {
+        await this.clearLoginState()
+      }
+    },
+    async clearLoginState() {
       this.resetLoginState()
-      this.toLogin()
+      await nextTick()
+      await this.toLogin()
     },
   },
   persist: {
-    key: 'vue-naivue-admin_auth',
+    key: 'zenith-admin_auth',
+    storage: sessionStorage,
   },
 })
